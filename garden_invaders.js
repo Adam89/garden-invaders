@@ -25,8 +25,8 @@ imgSprite.addEventListener("load", init, false);
 function init() {
   document.addEventListener("keydown", function(e) { checkKey(e, true); }, false)
   document.addEventListener("keyup",   function(e) { checkKey(e, false); }, false)
-  //defineObstacles();
-  //initEnemies();
+  defineObstacles();
+  initEnemies();
   begin();
 }
 
@@ -39,13 +39,13 @@ function begin() {
 
 function update() {
   clearCtx(ctxEntities);
-  //updateAllEnemies
+  updateAllEnemies();
   player1.update();
 }
 
 
 function draw() {
-  //drawAllEnemies()
+  drawAllEnemies()
   player1.draw()
 }
 
@@ -100,7 +100,6 @@ Player.prototype.update = function() {
 };
 
 Player.prototype.checkDirection = function() {
-
   var newDrawX          = this.drawX,
       newDrawY          = this.drawY,
       obstacleCollision = false;
@@ -122,13 +121,13 @@ Player.prototype.checkDirection = function() {
     this.srcX = 70;
   }
 
-  //obstacleCollision = this.checkObstacleCollide(newDrawX, newDrawY);
+  obstacleCollision = this.checkObstacleCollide(newDrawX, newDrawY);
 
   if(!obstacleCollision && !outOfBounds(this, newDrawX, newDrawY)) {
     this.drawX = newDrawX;
     this.drawY = newDrawY;
   }
-}
+};
 
 Player.prototype.draw = function() {
   //this.drawAllBullets();
@@ -145,6 +144,25 @@ Player.prototype.draw = function() {
   );
 };
 
+Player.prototype.checkObstacleCollide = function(newDrawX, newDrawY) {
+  var obstacleCounter = 0,
+      newCenterX = newDrawX + (this.width / 2),
+      newCenterY = newDrawY + (this.height / 2);
+
+  for(var i = 0; i < obstacles.length; i++) {
+    if(willCollide(obstacles[i], newCenterX, newCenterY)) {
+      obstacleCounter = 0
+    } else{
+      obstacleCounter++;
+    }
+  }
+
+  if(obstacleCounter === obstacles.length) {
+    return false;
+  } else {
+    return true;
+  }
+};
 
 function checkKey(e, value) {
   var keyID = e.keyCode || e.which;
@@ -175,6 +193,10 @@ function checkKey(e, value) {
   }
 }
 
+function willCollide(obstacle, newPositionX, newPositionY) {
+  return (obstacle.leftX < newPositionX && newPositionX < obstacle.rightX) && (obstacle.topY - 20 < newPositionY && newPositionY < obstacle.bottomY - 20);
+}
+
 function outOfBounds(a, x, y) {
   var newBottomY     = y + a.height,
       newTopY        = y,
@@ -188,3 +210,126 @@ function outOfBounds(a, x, y) {
   return newBottomY > treeLineBottom || newTopY < treeLineTop ||
     newRightX > treeLineRight || newLeftX < treeLineLeft
 };
+
+function Obstacle(x, y, w, h) {
+  this.width   = w;
+  this.height  = h;
+  this.drawX   = x;
+  this.drawY   = y;
+  this.leftX   = this.drawX;
+  this.rightX  = this.drawX + this.width;
+  this.topY    = this.drawY;
+  this.bottomY = this.drawY + this.height;
+}
+
+function defineObstacles() {
+  var treeWidth      = 65,
+      treeHeight     = 90,
+      rockDimensions = 30,
+      bushHeight     = 28,
+      bigBushWidth   = 150,
+      smallBushWidth = 90;
+
+  obstacles = [
+    new Obstacle(78, 360, treeWidth, treeHeight),
+    new Obstacle(390, 395, treeWidth, treeHeight),
+    new Obstacle(415, 102, treeWidth, treeHeight),
+    new Obstacle(619, 184, treeWidth, treeHeight),
+    new Obstacle(97, 63, rockDimensions, rockDimensions),
+    new Obstacle(296, 379, rockDimensions, rockDimensions),
+    new Obstacle(295, 25, bigBushWidth, bushHeight),
+    new Obstacle(570, 138, bigBushWidth, bushHeight),
+    new Obstacle(605, 492, smallBushWidth, bushHeight)
+  ]
+}
+
+function Enemy() {
+  this.srcX           = 140;
+  this.srcY           = 600;
+  this.width          = 45;
+  this.height         = 54;
+  this.drawX          = randomRange(0, canvasWidth - this.width);
+  this.drawY          = randomRange(0 , canvasHeigth - this.height);
+  this.centerX        = this.drawX + (this.width / 2);
+  this.centerY        = this.drawY + (this.height / 2);
+  this.targetX        = this.centerX;
+  this.targetY        = this.centerY;
+  this.randomMoveTime = randomRange(4000, 10000);
+  this.speed          = 1;
+  var that            = this;
+  this.moveInterval   = setInterval(function() { that.setTargetLocation(); }, that.randomMoveTime);
+  this.isDead         = false;
+}
+
+Enemy.prototype.update = function() {
+  this.centerX = this.drawX + (this.width / 2);
+  this.centerY = this.drawY + (this.height / 2);
+  this.checkDirection();
+}
+
+
+Enemy.prototype.draw = function() {
+  ctxEntities.drawImage(imgSprite, this.srcX, this.srcY, this.width, this.height, this.drawX, this.drawY, this.width, this.height);
+}
+
+Enemy.prototype.setTargetLocation = function() {
+  this.randomMoveTime = randomRange(4000, 10000);
+  var minX            = this.centerX - 50,
+      maxX            = this.centerX + 50,
+      minY            = this.centerY - 50,
+      maxY            = this.centerY + 50;
+  if(minX < 0) {
+    minX = 0;
+  }
+  if(maxX > canvasWidth) {
+    maxX = canvasWidth;
+  }
+  if(minY < 0) {
+    minY = 0;
+  }
+  if(maxY > canvasHeigth) {
+    maxY = canvasHeigth;
+  }
+
+  this.targetX = randomRange(minX, maxX);
+  this.targetY = randomRange(minY, maxY);
+}
+
+Enemy.prototype.checkDirection = function() {
+  if(this.centerX < this.targetX) {
+    this.drawX += this.speed;
+  } else if(this.centerX > this.targetX) {
+    this.drawX -= this.speed;
+  } else if(this.centerY < this.targetY) {
+    this.drawY += this.speed;
+  } else if(this.centerY > this.targeY) {
+    this.drawY -= this.speed;
+  }
+}
+
+Enemy.prototype.die = function() {
+  var soundEffect = new Audio("audio/dying.wav");
+  soundEffect.play();
+
+  clearInterval(this.moveInterval);
+  this.srcX = 185;
+  this.isDead = true;
+}
+
+function initEnemies() {
+  for(var i = 0; i < numEnemies; i++) {
+    enemies[enemies.length] = new Enemy();
+  }
+}
+
+function updateAllEnemies() {
+  for(var i = 0; i < enemies.length; i++) {
+    enemies[i].update();
+  }
+}
+
+function drawAllEnemies() {
+  for(var i = 0; i < enemies.length; i++) {
+    enemies[i].draw();
+  }
+}
